@@ -110,12 +110,18 @@ public class CreditCardController {
     public ResponseEntity<Integer> getUserIdForCreditCard(@RequestParam String creditCardNumber) {
         // Given a credit card number, efficiently find whether there is a user associated with the credit card
         // If so, return the user id in a 200 OK response. If no such user exists, return 400 Bad Request
+
+        // Loop through each credit card, comparing each instance's creditCardNumber to the given creditCardNumber
+        // If we find a match, we have found the user so we return the userId
         for (CreditCard creditCard: creditCardService.findAll()) {
             if ((Objects.equals(creditCard.getNumber(), creditCardNumber)) &&
                     (userService.findById(creditCard.getUserId()) != null)) {
                 return new ResponseEntity<>(creditCard.getUserId(), HttpStatus.OK);
             }
         }
+
+        // If the loop through every credit card produced no match, there is no user associated with the credit card
+        // We simply return -1 since a userId can not be negative
         return new ResponseEntity<>(-1, HttpStatus.BAD_REQUEST);
     }
 
@@ -127,8 +133,8 @@ public class CreditCardController {
         // [{date: 4/12, balance: 120}, {date: 4/11, balance: 110}, {date: 4/10, balance: 110}]
         // Return 200 OK if update is done and successful, 400 Bad Request if the given card number
         //  is not associated with a card.
-        ArrayList<List<BalanceHistory>> output = new ArrayList<>();
-        // We will iterate through each payload
+
+        // We will iterate through each payload in the input array, working out of each at a time
         for (UpdateBalancePayload load: payload) {
             int cardId = findIdGivenCreditCardNumber(load.getCreditCardNumber());
             if (cardId == -1) {
@@ -136,17 +142,21 @@ public class CreditCardController {
             }
             // Find the credit card ID using the given credit card number with our helper method
             CreditCard creditCard = creditCardService.findById(cardId);
+
+            // boolean used for detecting if a transaction for today's balance is present in the balance history
             Boolean containsToday = false;
 
 
-            // Next, we iterate through every transaction in the balance history and update the balance of transactions
+            // Iterate through every transaction in the balance history and update the balance
             // for the transactions that happened on same date as payload or later
             for (BalanceHistory balance : creditCard.getBalanceHistory()) {
-                // increment balance by that of new transaction
+
+                // If true, increment balance by adding the balance of new transaction to current balance
                 if (balance.getDate().isAfter(load.getTransactionTime()) ||
                         balance.getDate().equals(load.getTransactionTime())) {
                     balance.setBalance(balance.getBalance() + load.getTransactionAmount());
                 }
+
                 // Check if a balance history contains today's date.  If present, mark
                 // containsToday to true
                 if (balance.getDate().equals(LocalDate.now())) {
@@ -154,6 +164,7 @@ public class CreditCardController {
                 }
             }
 
+            // Create a new Balance History instance and add it to the credit card's balance history
             BalanceHistory newBalance = new BalanceHistory();
             newBalance.setDate(load.getTransactionTime());
             newBalance.setBalance(load.getTransactionAmount());
@@ -172,11 +183,8 @@ public class CreditCardController {
 
             // Finally, save this credit card instance before moving on to another payload
             creditCard = creditCardService.save(creditCard);
-            output.add(creditCard.getBalanceHistory());
-
-
         }
-        return new ResponseEntity<>("Successfully updated balance history " + output.toString(), HttpStatus.OK);
+        return new ResponseEntity<>("Successfully updated balance history", HttpStatus.OK);
     }
 
     // Helper function for finding ID of a credit card based on Credit Card Number

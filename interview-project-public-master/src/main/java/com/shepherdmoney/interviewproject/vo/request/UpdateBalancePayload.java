@@ -10,8 +10,9 @@ public class UpdateBalancePayload {
 
     private String creditCardNumber;
 
-    // Change to Date class to facilitate testing with Postman
-    // Does not affect basic function of Balance History
+    // Changed to LocalDate class to facilitate with working only with the date and ignoring timestamp given
+    // by Instant class or Date class
+    // A change that does not affect basic function of Balance History
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern="MM-dd-yyyy")
     private LocalDate transactionTime;
 
